@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { USERS } from '../lib/constants'
+import Avatar from './Avatar'
 import styles from './ThreadPanel.module.css'
 
 export default function ThreadPanel({
@@ -119,7 +120,7 @@ export default function ThreadPanel({
                         className={`${styles.message} ${isMe ? styles.messageMe : styles.messageThem}`}
                       >
                         {!isMe && (
-                          <span className={styles.msgAvatar}>{author?.avatar}</span>
+                          <Avatar username={reply.created_by} size="sm" style={{ alignSelf: 'flex-end' }} />
                         )}
                         <div className={styles.msgContent}>
                           {!isMe && (
@@ -129,7 +130,7 @@ export default function ThreadPanel({
                           )}
                           <div
                             className={styles.msgBubble}
-                            style={isMe ? { background: USERS[username]?.color || 'var(--accent)' } : {}}
+                            style={isMe ? { background: USERS[username]?.color } : {}}
                           >
                             {reply.content}
                           </div>
@@ -163,7 +164,7 @@ export default function ThreadPanel({
                     className={styles.sendBtn}
                     onClick={handleSend}
                     disabled={!replyText.trim() || sending}
-                    style={{ background: USERS[username]?.color || 'var(--accent)' }}
+                    style={{ background: USERS[username]?.color }}
                     aria-label="Send"
                   >
                     {sending ? '…' : '↑'}

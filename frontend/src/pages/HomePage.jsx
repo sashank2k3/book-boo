@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useAllThreads } from '../hooks/useDiscussions'
 import { USERS, BOOK } from '../lib/constants'
+import Avatar from '../components/Avatar'
 import styles from './HomePage.module.css'
 
 export default function HomePage() {
@@ -34,10 +35,10 @@ export default function HomePage() {
       {/* Welcome */}
       <section className={styles.welcome}>
         <div className={styles.greeting}>
-          Hey {me?.avatar} <strong>{me?.name}</strong>
+          Hey <Avatar username={username} size="sm" style={{ verticalAlign: 'middle', margin: '0 2px' }} /> <strong>{me?.name}</strong>
         </div>
         <div className={styles.partnerLine}>
-          Reading together with {other?.avatar} {other?.name}
+          Reading together with <Avatar username={other?.id} size="sm" style={{ verticalAlign: 'middle', margin: '0 2px' }} /> {other?.name}
         </div>
       </section>
 
@@ -87,11 +88,9 @@ export default function HomePage() {
                   onKeyDown={e => e.key === 'Enter' && navigate(`/read?page=${thread.page_number}&thread=${thread.id}`)}
                 >
                   <div className={styles.threadMeta}>
-                    <span
-                      className={styles.threadAuthor}
-                      style={{ color: author?.color }}
-                    >
-                      {author?.avatar} {author?.name}
+                    <span className={styles.threadAuthor} style={{ color: author?.color }}>
+                      <Avatar username={thread.created_by} size="sm" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                      {author?.name}
                     </span>
                     <span className={styles.threadPage}>p.{thread.page_number}</span>
                   </div>

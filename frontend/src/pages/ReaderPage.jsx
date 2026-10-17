@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useReducer } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useAuth } from '../hooks/useAuth'
 import { useDiscussions } from '../hooks/useDiscussions'
 import { supabase } from '../lib/supabase'
-import { BOOK, USERS } from '../lib/constants'
+import { BOOK } from '../lib/constants'
 import ThreadPanel from '../components/ThreadPanel'
 import NewThreadModal from '../components/NewThreadModal'
 import styles from './ReaderPage.module.css'
@@ -12,7 +12,6 @@ import styles from './ReaderPage.module.css'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
-// Use the bundled worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
@@ -23,84 +22,41 @@ export default function ReaderPage() {
   const navigate = useNavigate()
   const { username } = useAuth()
 
-  // PDF state
-  const [pdfUrl, setPdfUrl] = useState(null)
-  const [numPages, setNumPages] = useState(null)
+  // ── PDF state ─────────────────────────────────────────────────────────
+  const [pdfUrl, setPdfUrl]         = useState(null)
+  const [numPages, setNumPages]     = useState(null)
   const [currentPage, setCurrentPage] = useState(
     parseInt(searchParams.get('page') || '1', 10)
   )
-  const [pdfLoading, setPdfLoading] = useState(true)
-  const [pdfError, setPdfError] = useState(null)
+  const [pdfError, setPdfError]     = useState(null)
   const [containerWidth, setContainerWidth] = useState(null)
   const containerRef = useRef(null)
 
-  // Discussion state
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [activeThread, setActiveThread] = useState(
-    searchParams.get('thread') || null
-  )
-  const [newThreadModal, setNewThreadModal] = useState(null) // { selectedText, anchorType }
+  // ── Discussion state ──────────────────────────────────────────────────
+  const [panelOpen, setPanelOpen]       = useState(false)
+  const [activeThread, setActiveThread] = useState(searchParams.get('thread') || null)
+  const [newThreadModal, setNewThreadModal] = useState(null)
   const [selectedText, setSelectedText] = useState('')
 
-  // ── Swipe to navigate ─────────────────────────────────────────────────
+  // ── Swipe refs ────────────────────────────────────────────────────────
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
-  const [swipeDir, setSwipeDir] = useState(null) // 'left' | 'right' | null
-
-  const handleTouchStart = useCallback((e) => {
-    touchStartX.current = e.touches[0].clientX
-    touchStartY.current = e.touches[0].clientY
-    setSwipeDir(null)
-  }, [])
-
-  const handleTouchEnd = useCallback((e) => {
-    if (touchStartX.current === null) return
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    const dy = e.changedTouches[0].clientY - touchStartY.current
-
-    // Only treat as a horizontal swipe if dx dominates and is large enough
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx < 0) {
-        // swipe left → next page
-        setSwipeDir('left')
-        setCurrentPage(prev => Math.min(prev + 1, numPages || prev))
-      } else {
-        // swipe right → previous page
-        setSwipeDir('right')
-        setCurrentPage(prev => Math.max(prev - 1, 1))
-      }
-      setPanelOpen(false)
-      setActiveThread(null)
-      // Also clear any text selection on swipe
-      window.getSelection()?.removeAllRanges()
-      setSelectedText('')
-    } else {
-      // vertical scroll — also check for text selection
-      handleTextSelect(e)
-    }
-
-    touchStartX.current = null
-    touchStartY.current = null
-  }, [numPages])
 
   const { threads, createThread, postReply } = useDiscussions(currentPage)
 
-  // ── Load PDF URL from Supabase Storage ───────────────────────────────
+  // ── Load PDF from Supabase Storage ────────────────────────────────────
   useEffect(() => {
-    const loadPdf = async () => {
-      try {
-        const { data } = supabase.storage
-          .from(BOOK.bucket)
-          .getPublicUrl(BOOK.storageKey)
-        setPdfUrl(data.publicUrl)
-      } catch (err) {
-        setPdfError('Could not load the book. Please try again.')
-      }
+    try {
+      const { data } = supabase.storage
+        .from(BOOK.bucket)
+        .getPublicUrl(BOOK.storageKey)
+      setPdfUrl(data.publicUrl)
+    } catch {
+      setPdfError('Could not load the book. Please try again.')
     }
-    loadPdf()
   }, [])
 
-  // ── Container width for responsive PDF ───────────────────────────────
+  // ── Measure container for responsive PDF width ────────────────────────
   useEffect(() => {
     const measure = () => {
       if (containerRef.current) {
@@ -113,7 +69,7 @@ export default function ReaderPage() {
     return () => ro.disconnect()
   }, [])
 
-  // ── Open thread from URL param ────────────────────────────────────────
+  // ── Open thread from URL param ─────────────────────────────────────────
   useEffect(() => {
     const threadId = searchParams.get('thread')
     if (threadId) {
@@ -122,17 +78,56 @@ export default function ReaderPage() {
     }
   }, [searchParams])
 
-  // ── Text selection handler ────────────────────────────────────────────
+  // ── Text selection (desktop mouse) ────────────────────────────────────
   const handleTextSelect = useCallback(() => {
-    const selection = window.getSelection()
-    const text = selection?.toString().trim()
-    if (text && text.length > 1) {
-      setSelectedText(text)
-    } else {
-      setSelectedText('')
-    }
+    const text = window.getSelection()?.toString().trim()
+    setSelectedText(text && text.length > 1 ? text : '')
   }, [])
 
+  // ── Touch swipe handler ───────────────────────────────────────────────
+  const handleTouchStart = useCallback((e) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStartX.current === null) return
+
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+
+    touchStartX.current = null
+    touchStartY.current = null
+
+    // Horizontal swipe: must dominate vertical and exceed 50px
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0) {
+        // swipe left → next page
+        setCurrentPage(prev => Math.min(prev + 1, numPages || prev))
+      } else {
+        // swipe right → previous page
+        setCurrentPage(prev => Math.max(prev - 1, 1))
+      }
+      setPanelOpen(false)
+      setActiveThread(null)
+      window.getSelection()?.removeAllRanges()
+      setSelectedText('')
+    } else {
+      // vertical — check for text selection
+      const text = window.getSelection()?.toString().trim()
+      setSelectedText(text && text.length > 1 ? text : '')
+    }
+  }, [numPages])
+
+  // ── Page navigation ───────────────────────────────────────────────────
+  const goToPage = (page) => {
+    const clamped = Math.max(1, Math.min(page, numPages || 1))
+    setCurrentPage(clamped)
+    setPanelOpen(false)
+    setActiveThread(null)
+  }
+
+  // ── Thread actions ────────────────────────────────────────────────────
   const handleCommentOnSelection = () => {
     if (!selectedText) return
     setNewThreadModal({ selectedText })
@@ -151,23 +146,10 @@ export default function ReaderPage() {
       anchorType: 'page',
       username,
     })
-    // Post the first message as a reply immediately
-    await postReply({
-      threadId: thread.id,
-      content: firstMessage,
-      username,
-    })
+    await postReply({ threadId: thread.id, content: firstMessage, username })
     setNewThreadModal(null)
     setActiveThread(thread.id)
     setPanelOpen(true)
-  }
-
-  // ── Page navigation ───────────────────────────────────────────────────
-  const goToPage = (page) => {
-    const clamped = Math.max(1, Math.min(page, numPages || 1))
-    setCurrentPage(clamped)
-    setPanelOpen(false)
-    setActiveThread(null)
   }
 
   const threadCount = threads.length
@@ -188,7 +170,7 @@ export default function ReaderPage() {
           onClick={() => setPanelOpen(true)}
           aria-label="Open discussions"
         >
-          💬 {threadCount > 0 && <span className={styles.threadBadge}>{threadCount}</span>}
+          💬{threadCount > 0 && <span className={styles.threadBadge}>{threadCount}</span>}
         </button>
       </header>
 
@@ -213,10 +195,7 @@ export default function ReaderPage() {
         ) : (
           <Document
             file={pdfUrl}
-            onLoadSuccess={({ numPages }) => {
-              setNumPages(numPages)
-              setPdfLoading(false)
-            }}
+            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
             onLoadError={() => setPdfError('Failed to load PDF.')}
             loading={
               <div className={styles.loadingState}>
@@ -227,7 +206,7 @@ export default function ReaderPage() {
           >
             <Page
               pageNumber={currentPage}
-              width={containerWidth ? containerWidth - 32 : undefined}
+              width={containerWidth ? containerWidth - 24 : undefined}
               renderTextLayer={true}
               renderAnnotationLayer={false}
             />
@@ -255,7 +234,6 @@ export default function ReaderPage() {
           ←
         </button>
 
-        {/* Page jump input */}
         <div className={styles.pageJump}>
           <input
             type="number"
@@ -286,7 +264,7 @@ export default function ReaderPage() {
         </button>
       </nav>
 
-      {/* ── Discussion panel (bottom sheet) ── */}
+      {/* ── Discussion panel ── */}
       {panelOpen && (
         <ThreadPanel
           threads={threads}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { USERS } from '../lib/constants'
+import Avatar from './Avatar'
 import styles from './NewThreadModal.module.css'
 
 export default function NewThreadModal({
@@ -52,7 +53,7 @@ export default function NewThreadModal({
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.inputRow}>
-            <span className={styles.avatar}>{me?.avatar}</span>
+            <Avatar username={username} size="md" style={{ marginTop: 6 }} />
             <textarea
               className={styles.textarea}
               placeholder="What's on your mind?"
@@ -67,7 +68,7 @@ export default function NewThreadModal({
           <button
             type="submit"
             className={styles.submitBtn}
-            style={{ background: me?.color || 'var(--accent)' }}
+            style={{ background: me?.color }}
             disabled={!message.trim() || sending}
           >
             {sending ? 'Starting discussion…' : 'Start discussion'}

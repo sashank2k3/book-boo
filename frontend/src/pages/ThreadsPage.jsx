@@ -1,19 +1,13 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAllThreads } from '../hooks/useDiscussions'
 import { USERS } from '../lib/constants'
+import Avatar from '../components/Avatar'
 import styles from './ThreadsPage.module.css'
-
-const ANCHOR_TYPES = ['all', 'word', 'phrase', 'sentence', 'paragraph', 'page', 'chapter']
 
 export default function ThreadsPage() {
   const navigate = useNavigate()
   const { threads, loading } = useAllThreads()
-  const [filter, setFilter] = useState('all')
-
-  const filtered = filter === 'all'
-    ? threads
-    : threads.filter(t => t.anchor_type === filter)
 
   return (
     <div className={styles.page}>
@@ -25,29 +19,13 @@ export default function ThreadsPage() {
         <div style={{ width: 36 }} />
       </header>
 
-      {/* Filter pills */}
-      <div className={styles.filterRow}>
-        {ANCHOR_TYPES.map(type => (
-          <button
-            key={type}
-            className={`${styles.filterPill} ${filter === type ? styles.filterPillActive : ''}`}
-            onClick={() => setFilter(type)}
-          >
-            {type}
-          </button>
-        ))}
-      </div>
-
-      {/* Thread list */}
       <div className={styles.list}>
         {loading ? (
           <div className={styles.empty}>Loading discussions...</div>
-        ) : filtered.length === 0 ? (
-          <div className={styles.empty}>
-            No {filter !== 'all' ? filter : ''} discussions yet.
-          </div>
+        ) : threads.length === 0 ? (
+          <div className={styles.empty}>No discussions yet.</div>
         ) : (
-          filtered.map(thread => {
+          threads.map(thread => {
             const author = USERS[thread.created_by]
             const replyCount = thread.replies?.[0]?.count ?? 0
             return (
@@ -60,13 +38,13 @@ export default function ThreadsPage() {
                 onKeyDown={e => e.key === 'Enter' && navigate(`/read?page=${thread.page_number}&thread=${thread.id}`)}
               >
                 <div className={styles.cardHeader}>
-                  <span className={styles.author} style={{ color: author?.color }}>
-                    {author?.avatar} {author?.name}
-                  </span>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.anchorBadge}>{thread.anchor_type}</span>
-                    <span className={styles.pagePill}>p.{thread.page_number}</span>
+                  <div className={styles.authorRow}>
+                    <Avatar username={thread.created_by} size="sm" />
+                    <span className={styles.author} style={{ color: author?.color }}>
+                      {author?.name}
+                    </span>
                   </div>
+                  <span className={styles.pagePill}>p.{thread.page_number}</span>
                 </div>
 
                 {thread.selected_text ? (
@@ -75,7 +53,7 @@ export default function ThreadsPage() {
                     {thread.selected_text.length > 120 ? '…' : ''}"
                   </blockquote>
                 ) : (
-                  <p className={styles.pageNote}>Comment on page {thread.page_number}</p>
+                  <p className={styles.pageNote}>Note on page {thread.page_number}</p>
                 )}
 
                 <div className={styles.cardFooter}>
