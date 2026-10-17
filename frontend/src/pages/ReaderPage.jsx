@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useReducer } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useAuth } from '../hooks/useAuth'
@@ -41,6 +41,47 @@ export default function ReaderPage() {
   )
   const [newThreadModal, setNewThreadModal] = useState(null) // { selectedText, anchorType }
   const [selectedText, setSelectedText] = useState('')
+
+  // ── Swipe to navigate ─────────────────────────────────────────────────
+  const touchStartX = useRef(null)
+  const touchStartY = useRef(null)
+  const [swipeDir, setSwipeDir] = useState(null) // 'left' | 'right' | null
+
+  const handleTouchStart = useCallback((e) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    setSwipeDir(null)
+  }, [])
+
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+
+    // Only treat as a horizontal swipe if dx dominates and is large enough
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0) {
+        // swipe left → next page
+        setSwipeDir('left')
+        setCurrentPage(prev => Math.min(prev + 1, numPages || prev))
+      } else {
+        // swipe right → previous page
+        setSwipeDir('right')
+        setCurrentPage(prev => Math.max(prev - 1, 1))
+      }
+      setPanelOpen(false)
+      setActiveThread(null)
+      // Also clear any text selection on swipe
+      window.getSelection()?.removeAllRanges()
+      setSelectedText('')
+    } else {
+      // vertical scroll — also check for text selection
+      handleTextSelect(e)
+    }
+
+    touchStartX.current = null
+    touchStartY.current = null
+  }, [numPages])
 
   const { threads, createThread, postReply } = useDiscussions(currentPage)
 
@@ -94,27 +135,20 @@ export default function ReaderPage() {
 
   const handleCommentOnSelection = () => {
     if (!selectedText) return
-    // Guess anchor type by length
-    const words = selectedText.split(/\s+/).length
-    let anchorType = 'word'
-    if (words > 50) anchorType = 'paragraph'
-    else if (words > 15) anchorType = 'sentence'
-    else if (words > 5) anchorType = 'phrase'
-
-    setNewThreadModal({ selectedText, anchorType })
+    setNewThreadModal({ selectedText })
     window.getSelection()?.removeAllRanges()
     setSelectedText('')
   }
 
   const handleCommentOnPage = () => {
-    setNewThreadModal({ selectedText: '', anchorType: 'page' })
+    setNewThreadModal({ selectedText: '' })
   }
 
-  const handleCreateThread = async ({ selectedText, anchorType, firstMessage }) => {
+  const handleCreateThread = async ({ selectedText, firstMessage }) => {
     const thread = await createThread({
       pageNumber: currentPage,
       selectedText,
-      anchorType,
+      anchorType: 'page',
       username,
     })
     // Post the first message as a reply immediately
@@ -163,7 +197,8 @@ export default function ReaderPage() {
         className={styles.pdfArea}
         ref={containerRef}
         onMouseUp={handleTextSelect}
-        onTouchEnd={handleTextSelect}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {pdfError ? (
           <div className={styles.errorState}>
@@ -261,7 +296,7 @@ export default function ReaderPage() {
           currentPage={currentPage}
           onClose={() => { setPanelOpen(false); setActiveThread(null) }}
           onPostReply={postReply}
-          onNewThread={() => setNewThreadModal({ selectedText: '', anchorType: 'page' })}
+          onNewThread={() => setNewThreadModal({ selectedText: '' })}
         />
       )}
 
@@ -269,7 +304,6 @@ export default function ReaderPage() {
       {newThreadModal && (
         <NewThreadModal
           selectedText={newThreadModal.selectedText}
-          anchorType={newThreadModal.anchorType}
           pageNumber={currentPage}
           username={username}
           onSubmit={handleCreateThread}
