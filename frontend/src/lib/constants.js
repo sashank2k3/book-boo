@@ -16,6 +16,6 @@ export const USERS = {
 export const BOOK = {
   title: 'The Alchemist',
   author: 'Paulo Coelho',
-  storageKey: 'the-alchemist.pdf', // filename in Supabase Storage bucket
+  storageKey: 'The_Alchemist.pdf', // filename in Supabase Storage bucket
   bucket: 'books',
 }

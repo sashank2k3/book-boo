@@ -49,7 +49,7 @@ async def get_book_info():
         raise HTTPException(status_code=500, detail="Supabase not configured")
 
     bucket = "books"
-    filename = "the-alchemist.pdf"
+    filename = "The_Alchemist.pdf"
     public_url = f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{filename}"
 
     return {
@@ -155,7 +155,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     content = await file.read()
     bucket = "books"
-    storage_path = "the-alchemist.pdf"
+    storage_path = "The_Alchemist.pdf"
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
