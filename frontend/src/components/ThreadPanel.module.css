@@ -1,0 +1,323 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(26,18,9,0.5);
+  backdrop-filter: blur(2px);
+}
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+/* ─── Header ─────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pageLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: -apple-system, sans-serif;
+}
+
+.threadCount {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.newBtn {
+  background: var(--accent-muted);
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: -apple-system, sans-serif;
+}
+
+.closeBtn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Body ───────────────────────────── */
+.body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.emptyState {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.startBtn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: -apple-system, sans-serif;
+}
+
+/* ─── Thread tabs ────────────────────── */
+.threadTabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.threadTabs::-webkit-scrollbar { display: none; }
+
+.threadTab {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: -apple-system, sans-serif;
+  transition: all 0.15s;
+}
+
+.threadTabActive {
+  background: var(--text);
+  border-color: var(--text);
+  color: white;
+}
+
+/* ─── Quoted text ────────────────────── */
+.quotedText {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--accent-muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.quoteIcon {
+  font-size: 20px;
+  color: var(--accent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.quotedText p {
+  font-size: 13px;
+  color: var(--text);
+  font-style: italic;
+  font-family: 'Georgia', serif;
+  line-height: 1.5;
+}
+
+/* ─── Messages ───────────────────────── */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.message {
+  display: flex;
+  gap: 8px;
+  max-width: 85%;
+}
+
+.messageMe {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.messageThem {
+  align-self: flex-start;
+}
+
+.msgAvatar {
+  font-size: 22px;
+  flex-shrink: 0;
+  align-self: flex-end;
+}
+
+.msgContent {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.messageMe .msgContent {
+  align-items: flex-end;
+}
+
+.msgName {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 4px;
+  font-family: -apple-system, sans-serif;
+}
+
+.msgBubble {
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  font-family: -apple-system, sans-serif;
+  word-break: break-word;
+}
+
+.messageThem .msgBubble {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.messageMe .msgBubble {
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.msgTime {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+/* ─── Reply bar ──────────────────────── */
+.replyBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.replyInput {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  resize: none;
+  font-family: -apple-system, sans-serif;
+  outline: none;
+  overflow: hidden;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+}
+
+.replyInput:focus {
+  border-color: var(--accent);
+}
+
+.sendBtn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sendBtn:not(:disabled):active {
+  transform: scale(0.92);
+}
