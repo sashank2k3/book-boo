@@ -16,7 +16,7 @@ export default function HomePage() {
   const other = Object.values(USERS).find(u => u.id !== username)
 
   // Reading progress (we pass null as currentPage since we're not in the reader)
-  const { partnerProgress } = useReadingProgress(username, null)
+  const { partnerPage } = useReadingProgress(username, null)
 
   const recentThreads = threads.slice(0, 4)
   const totalPages = 208 // approximate — will be overridden by actual PDF page count
@@ -58,10 +58,10 @@ export default function HomePage() {
             <Avatar username={other?.id} size="sm" />
             <div className={styles.readerInfo}>
               <span className={styles.readerName}>{other?.name}</span>
-              {partnerProgress ? (
-                <span className={styles.readerPage}>p.{partnerProgress.page_number}</span>
+              {partnerPage ? (
+                <span className={styles.readerPage}>p.{partnerPage}</span>
               ) : (
-                <span className={styles.readerLabel}>not reading</span>
+                <span className={styles.readerLabel}>not started</span>
               )}
             </div>
           </div>

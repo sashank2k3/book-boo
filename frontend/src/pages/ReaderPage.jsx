@@ -45,7 +45,7 @@ export default function ReaderPage() {
   const touchStartY = useRef(null)
 
   const { threads, createThread, postReply } = useDiscussions(currentPage)
-  const { partnerProgress } = useReadingProgress(username, currentPage)
+  const { partnerPage } = useReadingProgress(username, currentPage)
 
   const partner = Object.values(USERS).find(u => u.id !== username)
 
@@ -163,10 +163,10 @@ export default function ReaderPage() {
         <div className={styles.centerInfo}>
           <span className={styles.pageNum}>{currentPage}</span>
           {numPages && <span className={styles.pageTotal}> / {numPages}</span>}
-          {partnerProgress?.page_number && (
+          {partnerPage && (
             <div className={styles.partnerChip}>
               <Avatar username={partner?.id} size="sm" style={{ width: 18, height: 18, fontSize: 9 }} />
-              <span>p.{partnerProgress.page_number}</span>
+              <span>p.{partnerPage}</span>
             </div>
           )}
         </div>
