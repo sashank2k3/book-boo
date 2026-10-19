@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { useAuth } from '../hooks/useAuth'
 import { useDiscussions } from '../hooks/useDiscussions'
+import { useReadingProgress } from '../hooks/useReadingProgress'
 import { supabase } from '../lib/supabase'
-import { BOOK } from '../lib/constants'
+import { BOOK, USERS } from '../lib/constants'
+import Avatar from '../components/Avatar'
 import ThreadPanel from '../components/ThreadPanel'
 import NewThreadModal from '../components/NewThreadModal'
 import styles from './ReaderPage.module.css'
@@ -23,28 +25,32 @@ export default function ReaderPage() {
   const { username } = useAuth()
 
   // ── PDF state ─────────────────────────────────────────────────────────
-  const [pdfUrl, setPdfUrl]         = useState(null)
-  const [numPages, setNumPages]     = useState(null)
+  const [pdfUrl, setPdfUrl]           = useState(null)
+  const [numPages, setNumPages]       = useState(null)
   const [currentPage, setCurrentPage] = useState(
     parseInt(searchParams.get('page') || '1', 10)
   )
-  const [pdfError, setPdfError]     = useState(null)
-  const [containerWidth, setContainerWidth] = useState(null)
+  const [pdfError, setPdfError]       = useState(null)
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef(null)
 
   // ── Discussion state ──────────────────────────────────────────────────
-  const [panelOpen, setPanelOpen]       = useState(false)
-  const [activeThread, setActiveThread] = useState(searchParams.get('thread') || null)
+  const [panelOpen, setPanelOpen]           = useState(false)
+  const [activeThread, setActiveThread]     = useState(searchParams.get('thread') || null)
   const [newThreadModal, setNewThreadModal] = useState(null)
-  const [selectedText, setSelectedText] = useState('')
+  const [selectedText, setSelectedText]     = useState('')
 
   // ── Swipe refs ────────────────────────────────────────────────────────
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
 
   const { threads, createThread, postReply } = useDiscussions(currentPage)
+  const { partnerProgress } = useReadingProgress(username, currentPage)
 
-  // ── Load PDF from Supabase Storage ────────────────────────────────────
+  const me = USERS[username]
+  const partner = Object.values(USERS).find(u => u.id !== username)
+
+  // ── Load PDF ──────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const { data } = supabase.storage
@@ -56,11 +62,14 @@ export default function ReaderPage() {
     }
   }, [])
 
-  // ── Measure container for responsive PDF width ────────────────────────
+  // ── Measure container ─────────────────────────────────────────────────
   useEffect(() => {
     const measure = () => {
       if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth)
+        setContainerSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        })
       }
     }
     measure()
@@ -69,68 +78,43 @@ export default function ReaderPage() {
     return () => ro.disconnect()
   }, [])
 
-  // ── Open thread from URL param ─────────────────────────────────────────
+  // ── URL param: open thread ────────────────────────────────────────────
   useEffect(() => {
     const threadId = searchParams.get('thread')
-    if (threadId) {
-      setActiveThread(threadId)
-      setPanelOpen(true)
-    }
+    if (threadId) { setActiveThread(threadId); setPanelOpen(true) }
   }, [searchParams])
 
-  // ── Text selection (desktop mouse) ────────────────────────────────────
+  // ── Text selection ────────────────────────────────────────────────────
   const handleTextSelect = useCallback(() => {
     const text = window.getSelection()?.toString().trim()
     setSelectedText(text && text.length > 1 ? text : '')
   }, [])
 
-  // ── Touch swipe handler ───────────────────────────────────────────────
+  // ── Swipe navigation ──────────────────────────────────────────────────
   const handleTouchStart = useCallback((e) => {
-    // Only track single-finger touches for swipe navigation
-    if (e.touches.length > 1) {
-      touchStartX.current = null
-      touchStartY.current = null
-      return
-    }
+    if (e.touches.length > 1) { touchStartX.current = null; return }
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }, [])
 
   const handleTouchEnd = useCallback((e) => {
     if (touchStartX.current === null) return
-
-    // If multiple fingers were used (pinch zoom), ignore
-    if (e.changedTouches.length > 1) {
-      touchStartX.current = null
-      touchStartY.current = null
-      return
-    }
+    if (e.changedTouches.length > 1) { touchStartX.current = null; return }
 
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
-
     touchStartX.current = null
-    touchStartY.current = null
 
-    // If the page is zoomed in (visual viewport smaller than layout viewport),
-    // don't navigate — let the user pan around the zoomed content
-    if (window.visualViewport && window.visualViewport.scale > 1.05) {
-      return
-    }
+    if (window.visualViewport?.scale > 1.05) return
 
-    // Horizontal swipe: must dominate vertical and exceed 60px
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
-      if (dx < 0) {
-        setCurrentPage(prev => Math.min(prev + 1, numPages || prev))
-      } else {
-        setCurrentPage(prev => Math.max(prev - 1, 1))
-      }
+      if (dx < 0) setCurrentPage(p => Math.min(p + 1, numPages || p))
+      else        setCurrentPage(p => Math.max(p - 1, 1))
       setPanelOpen(false)
       setActiveThread(null)
       window.getSelection()?.removeAllRanges()
       setSelectedText('')
     } else {
-      // vertical — check for text selection
       const text = window.getSelection()?.toString().trim()
       setSelectedText(text && text.length > 1 ? text : '')
     }
@@ -152,46 +136,51 @@ export default function ReaderPage() {
     setSelectedText('')
   }
 
-  const handleCommentOnPage = () => {
-    setNewThreadModal({ selectedText: '' })
-  }
-
   const handleCreateThread = async ({ selectedText, firstMessage }) => {
-    const thread = await createThread({
-      pageNumber: currentPage,
-      selectedText,
-      anchorType: 'page',
-      username,
-    })
+    const thread = await createThread({ pageNumber: currentPage, selectedText, anchorType: 'page', username })
     await postReply({ threadId: thread.id, content: firstMessage, username })
     setNewThreadModal(null)
     setActiveThread(thread.id)
     setPanelOpen(true)
   }
 
+  // Compute PDF render dimensions — fill the container height, preserve aspect ratio
+  const pdfPageWidth = containerSize.width > 0
+    ? Math.min(containerSize.width - 24, containerSize.height * 0.75)  // 0.75 = typical A5 page ratio
+    : undefined
+
   const threadCount = threads.length
 
   return (
     <div className={styles.page}>
-      {/* ── Top bar ── */}
+
+      {/* ── Overlay top bar ── */}
       <header className={styles.topBar}>
-        <button className={styles.backBtn} onClick={() => navigate('/')} aria-label="Back">
-          ←
-        </button>
-        <div className={styles.pageIndicator}>
+        <button className={styles.backBtn} onClick={() => navigate('/')} aria-label="Back">←</button>
+
+        <div className={styles.centerInfo}>
           <span className={styles.pageNum}>{currentPage}</span>
           {numPages && <span className={styles.pageTotal}> / {numPages}</span>}
+
+          {/* Partner position indicator */}
+          {partnerProgress && partnerProgress.page_number && (
+            <div className={styles.partnerChip}>
+              <Avatar username={partner?.id} size="sm" style={{ width: 18, height: 18, fontSize: 9 }} />
+              <span>p.{partnerProgress.page_number}</span>
+            </div>
+          )}
         </div>
+
         <button
           className={styles.discussBtn}
           onClick={() => setPanelOpen(true)}
-          aria-label="Open discussions"
+          aria-label="Discussions"
         >
           💬{threadCount > 0 && <span className={styles.threadBadge}>{threadCount}</span>}
         </button>
       </header>
 
-      {/* ── PDF Viewer ── */}
+      {/* ── PDF Viewer — full height ── */}
       <main
         className={styles.pdfArea}
         ref={containerRef}
@@ -223,14 +212,14 @@ export default function ReaderPage() {
           >
             <Page
               pageNumber={currentPage}
-              width={containerWidth ? containerWidth - 24 : undefined}
+              width={pdfPageWidth}
               renderTextLayer={true}
               renderAnnotationLayer={false}
             />
           </Document>
         )}
 
-        {/* Floating selection toolbar */}
+        {/* Selection toolbar */}
         {selectedText && (
           <div className={styles.selectionToolbar}>
             <button onClick={handleCommentOnSelection} className={styles.selectionBtn}>
@@ -240,16 +229,14 @@ export default function ReaderPage() {
         )}
       </main>
 
-      {/* ── Bottom navigation ── */}
+      {/* ── Bottom nav ── */}
       <nav className={styles.bottomNav}>
         <button
           className={styles.navBtn}
           onClick={() => goToPage(currentPage - 1)}
           disabled={currentPage <= 1}
           aria-label="Previous page"
-        >
-          ←
-        </button>
+        >←</button>
 
         <div className={styles.pageJump}>
           <input
@@ -265,23 +252,19 @@ export default function ReaderPage() {
 
         <button
           className={styles.commentPageBtn}
-          onClick={handleCommentOnPage}
-          aria-label="Comment on this page"
-        >
-          ✏️ Note
-        </button>
+          onClick={() => setNewThreadModal({ selectedText: '' })}
+          aria-label="Note on this page"
+        >✏️ Note</button>
 
         <button
           className={styles.navBtn}
           onClick={() => goToPage(currentPage + 1)}
           disabled={numPages ? currentPage >= numPages : false}
           aria-label="Next page"
-        >
-          →
-        </button>
+        >→</button>
       </nav>
 
-      {/* ── Discussion panel ── */}
+      {/* ── Panels ── */}
       {panelOpen && (
         <ThreadPanel
           threads={threads}
@@ -295,7 +278,6 @@ export default function ReaderPage() {
         />
       )}
 
-      {/* ── New thread modal ── */}
       {newThreadModal && (
         <NewThreadModal
           selectedText={newThreadModal.selectedText}
