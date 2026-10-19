@@ -25,12 +25,12 @@ export default function ReaderPage() {
   const { username } = useAuth()
 
   // ── PDF state ─────────────────────────────────────────────────────────
-  const [pdfUrl, setPdfUrl]           = useState(null)
-  const [numPages, setNumPages]       = useState(null)
-  const [currentPage, setCurrentPage] = useState(
+  const [pdfUrl, setPdfUrl]             = useState(null)
+  const [numPages, setNumPages]         = useState(null)
+  const [currentPage, setCurrentPage]   = useState(
     parseInt(searchParams.get('page') || '1', 10)
   )
-  const [pdfError, setPdfError]       = useState(null)
+  const [pdfError, setPdfError]         = useState(null)
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef(null)
 
@@ -47,7 +47,6 @@ export default function ReaderPage() {
   const { threads, createThread, postReply } = useDiscussions(currentPage)
   const { partnerProgress } = useReadingProgress(username, currentPage)
 
-  const me = USERS[username]
   const partner = Object.values(USERS).find(u => u.id !== username)
 
   // ── Load PDF ──────────────────────────────────────────────────────────
@@ -144,9 +143,12 @@ export default function ReaderPage() {
     setPanelOpen(true)
   }
 
-  // Compute PDF render dimensions — fill the container height, preserve aspect ratio
-  const pdfPageWidth = containerSize.width > 0
-    ? Math.min(containerSize.width - 24, containerSize.height * 0.75)  // 0.75 = typical A5 page ratio
+  // ── PDF sizing: drive by HEIGHT so it fills the screen top-to-bottom ──
+  // The pdfArea flex:1 takes up all space between topBar and bottomNav.
+  // We pass that exact height to <Page height={}> and react-pdf handles width.
+  const BOTTOM_NAV_H = 57
+  const pdfHeight = containerSize.height > 0
+    ? containerSize.height  // container already excludes bottom nav (it's outside)
     : undefined
 
   const threadCount = threads.length
@@ -161,9 +163,7 @@ export default function ReaderPage() {
         <div className={styles.centerInfo}>
           <span className={styles.pageNum}>{currentPage}</span>
           {numPages && <span className={styles.pageTotal}> / {numPages}</span>}
-
-          {/* Partner position indicator */}
-          {partnerProgress && partnerProgress.page_number && (
+          {partnerProgress?.page_number && (
             <div className={styles.partnerChip}>
               <Avatar username={partner?.id} size="sm" style={{ width: 18, height: 18, fontSize: 9 }} />
               <span>p.{partnerProgress.page_number}</span>
@@ -180,7 +180,7 @@ export default function ReaderPage() {
         </button>
       </header>
 
-      {/* ── PDF Viewer — full height ── */}
+      {/* ── PDF Viewer ── */}
       <main
         className={styles.pdfArea}
         ref={containerRef}
@@ -212,14 +212,13 @@ export default function ReaderPage() {
           >
             <Page
               pageNumber={currentPage}
-              width={pdfPageWidth}
+              height={pdfHeight}
               renderTextLayer={true}
               renderAnnotationLayer={false}
             />
           </Document>
         )}
 
-        {/* Selection toolbar */}
         {selectedText && (
           <div className={styles.selectionToolbar}>
             <button onClick={handleCommentOnSelection} className={styles.selectionBtn}>
@@ -231,12 +230,8 @@ export default function ReaderPage() {
 
       {/* ── Bottom nav ── */}
       <nav className={styles.bottomNav}>
-        <button
-          className={styles.navBtn}
-          onClick={() => goToPage(currentPage - 1)}
-          disabled={currentPage <= 1}
-          aria-label="Previous page"
-        >←</button>
+        <button className={styles.navBtn} onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage <= 1} aria-label="Previous page">←</button>
 
         <div className={styles.pageJump}>
           <input
@@ -250,21 +245,15 @@ export default function ReaderPage() {
           />
         </div>
 
-        <button
-          className={styles.commentPageBtn}
+        <button className={styles.commentPageBtn}
           onClick={() => setNewThreadModal({ selectedText: '' })}
-          aria-label="Note on this page"
-        >✏️ Note</button>
+          aria-label="Note on this page">✏️ Note</button>
 
-        <button
-          className={styles.navBtn}
-          onClick={() => goToPage(currentPage + 1)}
+        <button className={styles.navBtn} onClick={() => goToPage(currentPage + 1)}
           disabled={numPages ? currentPage >= numPages : false}
-          aria-label="Next page"
-        >→</button>
+          aria-label="Next page">→</button>
       </nav>
 
-      {/* ── Panels ── */}
       {panelOpen && (
         <ThreadPanel
           threads={threads}
