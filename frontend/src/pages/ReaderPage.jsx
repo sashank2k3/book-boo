@@ -86,6 +86,12 @@ export default function ReaderPage() {
 
   // ── Touch swipe handler ───────────────────────────────────────────────
   const handleTouchStart = useCallback((e) => {
+    // Only track single-finger touches for swipe navigation
+    if (e.touches.length > 1) {
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }, [])
@@ -93,19 +99,30 @@ export default function ReaderPage() {
   const handleTouchEnd = useCallback((e) => {
     if (touchStartX.current === null) return
 
+    // If multiple fingers were used (pinch zoom), ignore
+    if (e.changedTouches.length > 1) {
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
+
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
 
     touchStartX.current = null
     touchStartY.current = null
 
-    // Horizontal swipe: must dominate vertical and exceed 50px
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+    // If the page is zoomed in (visual viewport smaller than layout viewport),
+    // don't navigate — let the user pan around the zoomed content
+    if (window.visualViewport && window.visualViewport.scale > 1.05) {
+      return
+    }
+
+    // Horizontal swipe: must dominate vertical and exceed 60px
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
       if (dx < 0) {
-        // swipe left → next page
         setCurrentPage(prev => Math.min(prev + 1, numPages || prev))
       } else {
-        // swipe right → previous page
         setCurrentPage(prev => Math.max(prev - 1, 1))
       }
       setPanelOpen(false)
